@@ -28,9 +28,33 @@ def fetch_odds(api_url, api_key):
         st.error(f"Failed to fetch data: {response.status_code}")
         return pd.DataFrame()
 
+# Function to calculate recommendations based on odds
+def calculate_recommendations(data):
+    recommendations = []
+    for _, row in data.iterrows():
+        # Example formula for success probability
+        home_win_probability = 1 / abs(row['Home Odds']) if row['Home Odds'] else 0
+        away_win_probability = 1 / abs(row['Away Odds']) if row['Away Odds'] else 0
+        # Highlight close games and favorable odds
+        if home_win_probability > away_win_probability:
+            recommendations.append({
+                "Game": f"{row['Home Team']} vs {row['Away Team']}",
+                "Pick": f"{row['Home Team']} to win",
+                "Confidence": round(home_win_probability * 100, 2),
+                "Reasoning": "Favorable odds and higher implied probability for the home team."
+            })
+        else:
+            recommendations.append({
+                "Game": f"{row['Home Team']} vs {row['Away Team']}",
+                "Pick": f"{row['Away Team']} to win",
+                "Confidence": round(away_win_probability * 100, 2),
+                "Reasoning": "Better implied probability for the away team."
+            })
+    return pd.DataFrame(recommendations)
+
 # Streamlit app interface
 st.title("Betting Analysis Tool")
-st.write("Fetch live odds, process them, and display recommendations.")
+st.write("Fetch live odds, analyze them, and get recommendations.")
 
 # Input fields for the Odds API
 api_url = st.text_input("Enter Odds API URL", value="https://api.the-odds-api.com/v4/sports/upcoming/odds/?regions=us&markets=h2h&oddsFormat=american")
@@ -43,7 +67,13 @@ if st.button("Fetch Odds"):
         if not odds_data.empty:
             st.write("### Live Odds Data")
             st.dataframe(odds_data)
+            
+            # Calculate recommendations
+            st.write("### Betting Recommendations")
+            recommendations = calculate_recommendations(odds_data)
+            st.dataframe(recommendations)
         else:
             st.write("No data available.")
     else:
         st.error("Please enter both API URL and API Key.")
+
